@@ -3,7 +3,7 @@
 # openspiel install is another 5GB: 1.4GB for the pip cache, 1.5GB for Tensorflow, 1.5GB for a torch reinstall?
 
 # Build image
-FROM nvidia/cuda:11.2.1-cudnn8-devel-ubuntu20.04 as build
+FROM --platform=linux/amd64 nvidia/cuda:11.2.1-cudnn8-devel-ubuntu20.04 as build
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -11,13 +11,15 @@ RUN apt-get update && \
         curl ca-certificates bzip2 procps \
         # Needed for profiling
         nsight-compute-2020.2.1 nsight-systems-2020.3.4 \
+        #nsight-compute-2022.4.0  \
         # Needed for vast work
         openssh-server rsync less
 
 # Set up conda
 RUN curl -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     chmod +x ~/miniconda.sh && \
-    ~/miniconda.sh -b -p/opt/conda && \
+    # https://github.com/conda/conda/issues/10431
+    bash ~/miniconda.sh -b -p/opt/conda && \
     rm ~/miniconda.sh 
 ENV PATH /opt/conda/bin:/opt/nvidia/nsight-compute/2020.2.1/:/opt/nvidia/nsight-systems/2020.3.4/bin/:$PATH
 
@@ -44,12 +46,11 @@ ADD https://github.com/krallin/tini/releases/download/v0.18.0/tini /usr/bin/tini
 RUN chmod +x /usr/bin/tini
 
 # Set up git
-RUN git config --global user.name "Andrew Jones" && \
-    git config --global user.email "andyjones.ed@gmail.com"
+RUN git config --global user.name "David Atkinson" && \
+    git config --global user.email "davatk@gmail.com"
 
 # Install the Python packages I usually use
-# Install Jupyter 7.5 because 7.6.1 has a bunch of lag with autoreload 
-RUN pip install --no-cache-dir torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio===0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip install --no-cache-dir torch torchvision torchaudio -f https://download.pytorch.org/whl/torch_stable.html
 RUN pip install --no-cache-dir \
         # Core reqs
         numpy tqdm matplotlib beautifulsoup4 psutil ninja pytest b2sdk sympy portalocker fabric patchwork cloudpickle loky boto3 plotnine cvxpy \ 
