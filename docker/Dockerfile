@@ -50,7 +50,7 @@ RUN git config --global user.name "David Atkinson" && \
     git config --global user.email "davatk@gmail.com"
 
 # Install the Python packages I usually use
-RUN pip install --no-cache-dir torch torchvision torchaudio -f https://download.pytorch.org/whl/torch_stable.html
+RUN /bin/sh -c pip3 install --no-cache-dir torch torchvision torchaudio
 RUN pip install --no-cache-dir \
         # Core reqs
         numpy tqdm matplotlib beautifulsoup4 psutil ninja pytest b2sdk sympy portalocker fabric patchwork cloudpickle loky boto3 plotnine cvxpy \ 
