@@ -245,7 +245,7 @@ class NoiseScales:
             gs = gradients(self._agent.network, chunk)
             results = pd.DataFrame([noise_scale_components(chunk, gs[k], k) for k in gs])
 
-            for k, v in results.set_index('kind').unstack().iteritems():
+            for k, v in results.set_index('kind').unstack().items():
                 stats.silent('noise.' + '.'.join(k), v)
 
             for _, row in results.iterrows():

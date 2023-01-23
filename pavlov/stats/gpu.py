@@ -57,7 +57,7 @@ def gpu(device=None, throttle=0):
         df = df.loc[device]
 
     for device, row in df.iterrows():
-        for field, value in row.iteritems():
+        for field, value in row.items():
             if field in ('compute', 'fan', 'access'):
                 mean_percent(f'gpu-{device}.{field}', value/100)
             if field == 'power':

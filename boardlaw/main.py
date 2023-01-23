@@ -4,7 +4,6 @@ import torch
 from rebar import arrdict
 from pavlov import stats, logs, runs, storage, archive
 from . import hex, mcts, networks, learning, arena, storage, noisescales
-from torch.nn import functional as F
 from logging import getLogger
 
 log = getLogger(__name__)
@@ -154,9 +153,8 @@ def run(boardsize, width, depth, desc, nodes=64, c_puct=1/16, lr=1e-3, n_envs=32
     opt = torch.optim.Adam(network.parameters(), lr=lr)
     scaler = torch.cuda.amp.GradScaler()
 
-    run = runs.new_run(
-            description=desc, 
-            params=dict(boardsize=worlds.boardsize, width=width, depth=depth, nodes=nodes, c_puct=c_puct, lr=lr, n_envs=n_envs))
+    run: str = runs.new_run(description=desc, params=dict(boardsize=worlds.boardsize, width=width, depth=depth,
+                                                          nodes=nodes, c_puct=c_puct, lr=lr, n_envs=n_envs))
 
     archive.archive(run)
 

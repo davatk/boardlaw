@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import Optional
 import logging
 import time
 from collections import defaultdict, deque
@@ -45,7 +46,7 @@ def handlers(*new_handlers):
         logger.handlers = old_handlers
 
 @contextmanager
-def to_run(run):
+def to_run(run: Optional[str]):
     if run is None:
         yield
         return
