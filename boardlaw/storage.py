@@ -20,7 +20,7 @@ BOUNDS = {
 
 TIMES = {
     7: 3600,
-    9: 7200, # Not confident in this, not sure where 3600 came from
+    9: 7200, # Not confident in this, not sure where 3600 came from, so extrapolating wildly
 }
 
 SAMPLES = {

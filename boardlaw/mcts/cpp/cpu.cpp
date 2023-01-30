@@ -95,7 +95,7 @@ Policy policy(MCTSTA m, H3D::TA q, int t, int b) {
         }
     }
 
-    p.lambda_n = m.c_puct[b]*float(N)/float(N +A);
+    p.lambda_n = m.c_puct[b]*sqrt(float(N))/float(N +A);
     p.alpha = newton_search(p);
 
     return p;
