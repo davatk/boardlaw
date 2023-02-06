@@ -46,19 +46,29 @@ def handlers(*new_handlers):
         logger.handlers = old_handlers
 
 @contextmanager
-def to_run(run: Optional[str]):
+def to_run(run: Optional[str], keep_stdout=False):
     if run is None:
         yield
         return
 
     path = files.new_file(run, 'logs.{n}.txt')
-    handler = logging.FileHandler(path)
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(logging.Formatter(
+    file_handler = logging.FileHandler(path)
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(
         fmt='%(asctime)s %(levelname)s %(name)s: %(message)s', 
         datefmt=r'%H:%M:%S'))
 
-    with handlers(handler):
+    stream_handler = logging.StreamHandler(stream=sys.stdout)
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(logging.Formatter(
+        fmt='%(asctime)s %(levelname)s %(name)s: %(message)s',
+        datefmt=r'%H:%M:%S'))
+
+    all_handlers = [file_handler]
+    if keep_stdout:
+        all_handlers.append(stream_handler)
+
+    with handlers(*all_handlers):
         try:
             yield
         except:

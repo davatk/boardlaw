@@ -181,12 +181,12 @@ def run(boardsize, width, depth, desc, nodes=64, c_puct=1/16, lr=1e-3, n_envs=32
 
                 worlds = new_worlds
 
-                log.info(f'({len(buffer)}/{buffer_len}) actor stepped')
+                #log.info(f'({len(buffer)}/{buffer_len}) actor stepped')
 
             # Optimize
             chunk, buffer = as_chunk(buffer, n_envs)
             optimize(network, scaler, opt, chunk[idxs])
-            log.info('learner stepped')
+            #log.info(f'learner stepped ({len(buffer)}/{buffer_len})')
 
             stats.gpu(worlds.device, 15)
 
