@@ -158,7 +158,7 @@ def run(boardsize, width, depth, desc, nodes=64, c_puct=1/16, lr=1e-3, n_envs=32
 
     archive.archive(run)
 
-    storer = storage.FlopsStorer(run, agent)
+    storer = storage.FlopsStorer(run, agent, width=width, depth=depth)
     noise = noisescales.NoiseScales(agent, buffer_len)
 
     buffer = []

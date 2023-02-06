@@ -5,6 +5,7 @@ import pickle
 from . import mcts
 import inspect
 from logging import getLogger
+from typing import Optional
 
 log = getLogger(__name__)
 
@@ -48,21 +49,52 @@ def flops_per_sample(agent):
 
     return n_nodes*count
 
-def flops_savepoints(boardsize, n_snapshots=21, upper=None):
+def network_defined_upper_bound(width: Optional[int], depth: Optional[int]) -> Optional[float]:
+    if not width or not depth:
+        return None
+    if width <= 4 and depth <= 8:
+        return 1e14
+    if width == 8 and depth <= 8:
+        return 5e14
+    if width == 16 and depth <= 8:
+        return 1e15
+    if width == 32 and depth <= 8:
+        return 5e15
+    if width == 64 and depth <= 2:
+        return 5e15
+    if width == 64 and depth <= 8:
+        return 1e16
+    if width == 128 and depth <= 2:
+        return 1e16
+    if width == 128 and depth <= 8:
+        return 5e16
+    if width == 256 and depth <= 2:
+        return 5e16
+    if width == 256 and depth <= 8:
+        return 1e17
+    if width == 512:
+        return 1e17
+    if width == 1024:
+        return 1e18
+    return None
+
+
+
+def flops_savepoints(boardsize, n_snapshots=21, upper=None, width=width, depth=depth):
     lower = BOUNDS[boardsize][0]
-    upper = upper or BOUNDS[boardsize][1]
+    upper = upper or network_defined_upper_bound(width, depth) or BOUNDS[boardsize][1]
     return 10**np.linspace(np.log10(lower), np.log10(upper), n_snapshots) 
 
 class FlopsStorer:
 
-    def __init__(self, run, agent):
+    def __init__(self, run, agent, width=None, depth=None):
         self._run = run
 
         self._flops_per = flops_per_sample(agent)
 
         boardsize = agent.network.obs_space.dim[0]
 
-        self._savepoints = flops_savepoints(boardsize)
+        self._savepoints = flops_savepoints(boardsize, width=width, depth=depth)
         self._next = 0
         self._n_samples = 0
         self._n_flops = 0
