@@ -222,12 +222,12 @@ def refresh_runs():
 
     return new
 
-def create_agents(rs, test_nodes=64, c=1/16, dry_run=False):
+def create_agents(runs, test_nodes=64, c=1/16, dry_run=False):
     with connection() as conn:
         snaps = pd.read_sql_query('select * from snaps', conn, index_col='id')
 
         agents = (snaps.index
-            [snaps.run.isin(rs.run)]
+            [snaps.run.isin(runs.run)]
             .to_frame(name='snap')
             .reset_index(drop=True))
         agents['nodes'] = test_nodes
