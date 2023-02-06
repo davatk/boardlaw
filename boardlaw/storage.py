@@ -80,7 +80,7 @@ def network_defined_upper_bound(width: Optional[int], depth: Optional[int]) -> O
 
 
 
-def flops_savepoints(boardsize, n_snapshots=21, upper=None, width=width, depth=depth):
+def flops_savepoints(boardsize, n_snapshots=21, upper=None, width=None, depth=None):
     lower = BOUNDS[boardsize][0]
     upper = upper or network_defined_upper_bound(width, depth) or BOUNDS[boardsize][1]
     return 10**np.linspace(np.log10(lower), np.log10(upper), n_snapshots) 
