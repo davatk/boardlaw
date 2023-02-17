@@ -11,6 +11,8 @@ from random import shuffle
 from multiprocessing import set_start_method
 from . import common
 from .. import sql, elos
+from pynvml import nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
+
 
 log = getLogger(__name__)
 
@@ -218,13 +220,18 @@ def format_seconds(s):
     return f'{h}h{td.components.minutes:02d}m{td.components.seconds:02d}s'
     
 def print_stats(stats):
+    mem = [nvmlDeviceGetMemoryInfo(nvmlDeviceGetHandleByIndex(i)).free / (1024 ** 3) for i in range(3)]
+
     duration = stats.end - stats.start
     remaining = (stats.total - stats.finished)/(stats.finished + 1)*(stats.end - stats.start)
     end = pd.to_datetime(stats.end + remaining, unit='s')
     print(
         f'{stats.finished}/{stats.total}:\n'
         f'  {format_seconds(duration)} so far. {format_seconds(remaining)} remaining, end {end:%a %d %b %H:%M}.\n'
-        f'  {stats.moves/duration:.0f} moves/sec, {60*stats.matchups/duration:.0f} matchups/min.')
+        f'  {stats.moves/duration:.0f} moves/sec, {60*stats.matchups/duration:.0f} matchups/min.'
+        f'  GPU mem: {mem[0]:.3f}GB {mem[1]:.3f}GB {mem[2]:.3f}GB'
+    )
+    return min(mem) < 2
 
 def evaluate_gen(worldfunc, agentfunc, games, n_envs_per=512, chunks=64, n_workers=2):
     assert list(games.index) == list(games.columns)
@@ -244,7 +251,7 @@ def evaluate_gen(worldfunc, agentfunc, games, n_envs_per=512, chunks=64, n_worke
     log.info(f'Generated diagonal pieces; {len(jobs)} total')
     
     # Skew pieces
-    for (i, first), (j, second) in combinations(enumerate(chunks), 2):
+    for (i, first), (j, second) in tqdm(list(combinations(enumerate(chunks), 2))):
         combined = first + second
         subgames = games.loc[combined, combined].copy()
         subgames.loc[first, first] = n_envs_per
@@ -287,11 +294,16 @@ def evaluate(agents, games, **kwargs):
 
     from IPython import display
 
+    finished = True
     for rs, stats in evaluate_gen(worldfunc, agentfunc, games, **kwargs):
         sql.save_trials(rs)
 
         display.clear_output(wait=True)
-        print_stats(stats)
+        out_of_mem = print_stats(stats)
+        if out_of_mem:
+            finished = False
+            break
+    return finished
 
 def memory_safe_chunks(agents, n_envs_per, max_memory=4*1024*1024, max_size=256):
     #TODO: Are the activations of a single layer really the expensive part here?
