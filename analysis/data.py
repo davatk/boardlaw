@@ -22,7 +22,7 @@ def _trial_elos(boardsize, counter):
     # and another where >>64k games are played against the best agent. Both of the these evaluation schemes
     # are saved in the same database, so to stop the 64k-results skewing everything, we grab the first 1000
     # games played by each pair.
-    trials = (sql.trial_query(boardsize, 'bee/%')
+    trials = (sql.trial_query(boardsize)
                 .query('black_wins + white_wins >= 512')
                 .groupby(['black_agent', 'white_agent'])
                 .first().reset_index())

@@ -1,4 +1,7 @@
 from torch.functional import broadcast_tensors
+import traceback
+from datetime import datetime
+import gc
 from tqdm.auto import tqdm
 import time
 import pandas as pd
@@ -11,7 +14,6 @@ from random import shuffle
 from multiprocessing import set_start_method
 from . import common
 from .. import sql, elos
-from pynvml import nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
 
 
 log = getLogger(__name__)
@@ -220,18 +222,14 @@ def format_seconds(s):
     return f'{h}h{td.components.minutes:02d}m{td.components.seconds:02d}s'
     
 def print_stats(stats):
-    mem = [nvmlDeviceGetMemoryInfo(nvmlDeviceGetHandleByIndex(i)).free / (1024 ** 3) for i in range(3)]
-
     duration = stats.end - stats.start
     remaining = (stats.total - stats.finished)/(stats.finished + 1)*(stats.end - stats.start)
     end = pd.to_datetime(stats.end + remaining, unit='s')
     print(
         f'{stats.finished}/{stats.total}:\n'
         f'  {format_seconds(duration)} so far. {format_seconds(remaining)} remaining, end {end:%a %d %b %H:%M}.\n'
-        f'  {stats.moves/duration:.0f} moves/sec, {60*stats.matchups/duration:.0f} matchups/min.'
-        f'  GPU mem: {mem[0]:.3f}GB {mem[1]:.3f}GB {mem[2]:.3f}GB'
+        f'  {stats.moves/duration:.0f} moves/sec, {60*stats.matchups/duration:.0f} matchups/min.\n'
     )
-    return min(mem) < 2
 
 def evaluate_gen(worldfunc, agentfunc, games, n_envs_per=512, chunks=64, n_workers=2):
     assert list(games.index) == list(games.columns)
@@ -263,22 +261,37 @@ def evaluate_gen(worldfunc, agentfunc, games, n_envs_per=512, chunks=64, n_worke
 
     set_start_method('spawn', True)
     stats = initial_stats(len(jobs))
-    with parallel.parallel(evaluate_chunk, N=n_workers, executor='cuda') as pool:
-        idxs = list(jobs)
-        shuffle(idxs)
+    idxs = list(jobs)
+    shuffle(idxs)
+    completed_idxs = set()
+    finished = False
+    while not finished:
+        try:
+            with open('execution.log', 'a') as f:
+                f.write(f'{datetime.now()}: completed {len(completed_idxs)} \n')
+            with parallel.parallel(evaluate_chunk, N=n_workers, executor='cuda') as pool:
+                pool_jobs = {k: pool(worldfunc, agentfunc, jobs[k], n_envs_per) for k in idxs if k not in completed_idxs}
+                while pool_jobs:
+                    for k, future in list(pool_jobs.items()):
+                        if future.done():
+                            results = future.result()
+                            update_stats(stats, results)
+                            completed_idxs.add(k)
+                            with open('execution.log', 'a') as f:
+                                f.write(f'{datetime.now()}: completed {len(completed_idxs)} \n')
+                            yield results, stats.copy()
+                            del pool_jobs[k]
 
-        jobs = {k: pool(worldfunc, agentfunc, jobs[k], n_envs_per) for k in idxs}
-        while jobs:
-            for k, future in list(jobs.items()):
-                if future.done():
-                    results = future.result()
-                    update_stats(stats, results)
-                    yield results, stats.copy()
-                    del jobs[k]
-            
-            stats['end'] = time.time()
-            yield [], stats.copy()
-            time.sleep(.1)
+                    stats['end'] = time.time()
+                    yield [], stats.copy()
+                    time.sleep(.1)
+            finished = True
+        except torch.cuda.OutOfMemoryError as e:
+            with open('execution.log', 'a') as f:
+                f.write(f'{datetime.now()}: {e}\n')
+                f.write(traceback.format_exc() + '\n')
+            gc.collect()
+            torch.cuda.empty_cache()
 
 def evaluate(agents, games, **kwargs):
 
@@ -294,16 +307,11 @@ def evaluate(agents, games, **kwargs):
 
     from IPython import display
 
-    finished = True
     for rs, stats in evaluate_gen(worldfunc, agentfunc, games, **kwargs):
         sql.save_trials(rs)
 
         display.clear_output(wait=True)
-        out_of_mem = print_stats(stats)
-        if out_of_mem:
-            finished = False
-            break
-    return finished
+        print_stats(stats)
 
 def memory_safe_chunks(agents, n_envs_per, max_memory=4*1024*1024, max_size=256):
     #TODO: Are the activations of a single layer really the expensive part here?
