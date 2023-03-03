@@ -63,7 +63,7 @@ def uniform_available(ref_id, n_envs):
 def std_available(max_std=.5, max_games=512*1024):
     ws, gs = [], []
     agents = sql.agent_query().query('test_nodes == 64')
-    trials = sql.trial_query(None, None, 64)
+    trials = sql.trial_query(None, test_nodes=64)
 
     b = 9
     board_agents = agents.loc[lambda df: df.boardsize == b]
