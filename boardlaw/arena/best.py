@@ -21,7 +21,7 @@ TOPS = {
     6: 4024, 
     7: 23047, 
     8: 10605, 
-    9: 14576}
+    9: 10729}
 
 def frontier_participants(ags, boardsize):
     from analysis import data
